@@ -10,11 +10,22 @@
 #los datos, grafique PC1 vs PC2, y PC1 vs PC3. Comente si es conveniente efectuar una reducción
 #de dimensionalidad del conjunto de datos Boston.
 
+#matriz de covarianzas
+mcv <- cov(boston[,-1])
+pairs(mcv)
+
+mcr <- cor(boston[,-1])
+pairs(mcr)
+pairs(boston[,-1])
+
 boston <- read.csv("Boston_dataset.csv")
-CP <- princomp(scale(boston[,-1]))
+CP <- princomp(scale(boston[,-1]), cor = F) #cor=T, se usa la matriz de correlaciones o viceversa, o se escala o se usa matriz de correlaciones
 summary(CP)
-plot(CP$scores[,1],CP$scores[,2])
+plot(CP)
 biplot(CP)
+
+#Conclusiones: de acuardo con el ACP es evidente que hay variables redundantes que pueden ser eliminadas del
+#de la base de datos, por lo tanto el análisis es útil en este caso por que existen correlaciones entre las variables.
 
 
 #2. Realice una regresión con componentes principales con el conjunto de datos Boston.csv. Con
@@ -47,14 +58,21 @@ validationplot(pcr_model, val.type="MSEP")
 validationplot(pcr_model, val.type = "R2")
 
 
-# plot the predicted vs measured values using predplot function 
-
-predplot(pcr_model)
-
 # regression coefficients can be plotted using the coefplot function
 
 coefplot(pcr_model)
 
+
+#residuales vs predichos
+
+plot(pcr_model$residuals,pcr_model$fitted.values)
+
+
+#Predichos vs observados
+
+# plot the predicted vs measured values using predplot function 
+
+predplot(pcr_model)
 
 #3. Busque conjuntos de datos (en internet o cualquier libro de diseño de experimentos) para aplicar
 #la prueba de Wilcoxon y modifique el script visto en clase
@@ -73,8 +91,8 @@ Antes <-  c(18, 9, 5, 19, 13,6, 10, 5, 22, 8, 16, 10, 9, 14, 17)
 Despues <- c(8,10, 5, 11,15, 2, 11,5,17, 5,9, 13, 5, 6,8)
 
 my_data <- data.frame(
-  group = rep(c("Antes", "Despues"), each = 15),
-  respuesta = c(Antes,  Despues)
+  Grupos= rep(c("Antes", "Despues"), each = 15),
+  Respuesta = c(Antes,  Despues)
 )
 my_data
 
@@ -87,10 +105,11 @@ res <- wilcox.test(respuesta~group, data = my_data,
 res
 
 library("ggpubr")
-ggboxplot(my_data, x = "group", y = "respuesta", 
-color = "group", palette = c("#00AFBB", "#E7B800"),
-ylab = "respuesta", xlab = "Groups")+stat_summary(fun.y="mean", col=c("#00AFBB", "#E7B800"))
-
+b1 <- ggboxplot(my_data, x = "Grupos", y = "Respuesta", 
+color = "Grupos", palette = c("#00AFBB", "#E7B800"),
+ylab = "Respuesta", xlab = "Grupos")+stat_summary(fun.y="mean", col=c("#00AFBB", "#E7B800"))+
+theme_gray()
+b1
 
 #Conclusión hay diferencias significativas en los dos grupos
 
