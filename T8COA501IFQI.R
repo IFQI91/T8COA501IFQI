@@ -10,6 +10,9 @@
 #los datos, grafique PC1 vs PC2, y PC1 vs PC3. Comente si es conveniente efectuar una reducción
 #de dimensionalidad del conjunto de datos Boston.
 
+#base boston
+boston <- read.csv("Boston_dataset.csv")
+
 #matriz de covarianzas
 mcv <- cov(boston[,-1])
 pairs(mcv)
@@ -18,7 +21,7 @@ mcr <- cor(boston[,-1])
 pairs(mcr)
 pairs(boston[,-1])
 
-boston <- read.csv("Boston_dataset.csv")
+
 CP <- princomp(scale(boston[,-1]), cor = F) #cor=T, se usa la matriz de correlaciones o viceversa, o se escala o se usa matriz de correlaciones
 summary(CP)
 plot(CP)
@@ -90,6 +93,18 @@ Verracos <-  c(1, 2, 3, 4, 5,6, 7, 8, 9, 10, 11, 2, 13, 14, 15)
 Antes <-  c(18, 9, 5, 19, 13,6, 10, 5, 22, 8, 16, 10, 9, 14, 17)
 Despues <- c(8,10, 5, 11,15, 2, 11,5,17, 5,9, 13, 5, 6,8)
 
+#verificar normalidad
+shapiro.test(Antes)
+hist(Antes)
+library(car)
+car::qqPlot(Antes)
+
+shapiro.test(Despues)
+hist(Despues)
+library(car)
+car::qqPlot(Despues)
+
+
 my_data <- data.frame(
   Grupos= rep(c("Antes", "Despues"), each = 15),
   Respuesta = c(Antes,  Despues)
@@ -100,18 +115,20 @@ base_verracos <- cbind(Antes,Despues)
 base_verracos
 row.names(base_verracos) <- Verracos
 
-res <- wilcox.test(respuesta~group, data = my_data,
+res <- wilcox.test(Respuesta~Grupos, data = my_data,
                    exact = FALSE,paired=TRUE)
 res
 
+#Boxplot
 library("ggpubr")
-b1 <- ggboxplot(my_data, x = "Grupos", y = "Respuesta", 
+box_p1 <- ggboxplot(my_data, x = "Grupos", y = "Respuesta", 
 color = "Grupos", palette = c("#00AFBB", "#E7B800"),
-ylab = "Respuesta", xlab = "Grupos")+stat_summary(fun.y="mean", col=c("#00AFBB", "#E7B800"))+
-theme_gray()
-b1
+ylab = "morfo anomalías espermáticas", xlab = "alimentación")+
+  stat_summary(fun="mean", col=c("#00AFBB", "#E7B800"))+
+theme_gray()+rremove("legend")
+box_p1
 
-#Conclusión hay diferencias significativas en los dos grupos
+#Conclusión hay diferencias estadísticamente significativas en los dos grupos
 
 #b) Comparar dos muestras de datos independientes
 #Comparación de valores de testosterona entre varones nunca fumadores y varones que fuman más de 30 cigarros al día
@@ -124,21 +141,25 @@ hist(NF)
 hist(MF)
 shapiro.test(NF)
 shapiro.test(MF)
+library(car)
+car::qqPlot(NF)
+car::qqPlot(MF)
 
 my_data2 <- data.frame(
-  group = rep(c("NF", "MF"), each = 10),
-  respuesta = c(NF,  MF)
+  Grupos = rep(c("NF", "MF"), each = 10),
+  Respuesta = c(NF,  MF)
 )
 my_data2
 
 library("ggpubr")
-ggboxplot(my_data2, x = "group", y = "respuesta", 
-  color = "group", palette = c("#00AFBB", "#E7B800"),
-  ylab = "respuesta", xlab = "Groups")+
-  stat_summary(fun.y="mean", col=c("#00AFBB", "#E7B800"))
+box_p2 <- ggboxplot(my_data2, x = "Grupos", y = "Respuesta", 
+  color = "Grupos", palette = c("#00AFBB", "#E7B800"),
+  ylab = "niveles de testosterona", xlab = "categorías de fumadores")+
+  stat_summary(fun="mean", col=c("#00AFBB", "#E7B800"))+
+  theme_gray()+rremove("legend")
+box_p2
 
-
-res2 <- wilcox.test(respuesta~group, data = my_data2,
+res2 <- wilcox.test(Respuesta~Grupos, data = my_data2,
                    exact = FALSE, paired=F)
 res2
 
@@ -180,18 +201,59 @@ shapiro.test(deca$residuals)
 hist(deca$residuals)
 
 #Prueba de Tukey para medias
-agricolae::HSD.test(deca,"fertilizante", group=TRUE,console=TRUE)
+#d <- agricolae::HSD.test(deca,"fertilizante", group=TRUE,console=TRUE)
+d <- TukeyHSD(deca)
+
+#Para Boxplot con letras
+
+library(ggplot2)
+library(multcompView)
+library(dplyr)
+
+cld <- multcompLetters4(deca, d)
 
 
+# tabla con factores y 3er cuantil
+r <- my_data3 %>% group_by(fertilizante) %>%
+  summarise(mean=mean(respuesta), quant = quantile(respuesta, probs = 0.75)) %>%
+  arrange(desc(mean))
+
+# extraccion de letras añadiendo a la tabla r del paso anterior
+cld <- as.data.frame.list(cld$fertilizante)
+r$cld <- cld$Letters
+
+#Boxplot con letras
+box_p3 <- ggplot(my_data3, aes(fertilizante, respuesta )) + 
+  geom_boxplot(show.legend = F) +
+  labs(x="fertilizante", y="respuesta (alturan en cm)") +
+  theme_bw() + 
+  #theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  theme_gray()+
+  geom_text(data = r, aes(x = fertilizante, y = quant, label = cld), size = 6, vjust=-1, hjust =-1)+
+  stat_summary(fun="mean")
+box_p3
+
+#cajas con diferente color
 library("ggpubr")
-ggboxplot(my_data3, x = "fertilizante", y = "respuesta", 
+box_p4 <- ggboxplot(my_data3, x = "fertilizante", y = "respuesta", 
           color = "fertilizante", palette = c("#00AFBB", "#E7B800","#DF0101","#088A08"),
-          ylab = "respuesta", xlab = "Groups")+
-  stat_summary(fun.y="mean", col=c("#00AFBB", "#E7B800","#DF0101","#088A08"))
+          ylab = "respuesta (altura en cm)", xlab = "fertilizante")+
+  stat_summary(fun="mean", col=c("#00AFBB", "#E7B800","#DF0101","#088A08"))+
+  geom_text(data = r, aes(x = fertilizante, y = quant, label = cld), size = 6, vjust=-1, hjust =-1)+
+  theme_gray()+rremove("legend")
+box_p4
+
 
 
 #d) Reporte igualmente las gráficas de boxplot a colores de los incisos a, b y c.
 
+#Ejercicio a
+box_p1
+#Ejercicio b
+box_p2
+#Ejercicio c
+box_p3
+box_p4
 
-
+#guardar espacio de trabajo
 save.image("T8COA501IFQI.RData")

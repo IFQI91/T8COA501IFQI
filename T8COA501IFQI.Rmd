@@ -1,0 +1,106 @@
+---
+title: '**Tarea 8**'
+author: ' \textcolor{blue}{Iván F. Quiroz Ibáñez}'
+date: "`r format(Sys.time(), '%d % de %B % de %Y')`"
+language: es-MX
+output:
+  pdf_document:
+    includes:
+  html_document:
+    toc: TRUE
+    toc_float: TRUE
+    fig_caption: yes
+    df_print: paged
+  word_document:
+subtitle: COA-501 Herramientas de cómputo para investigadores
+---
+
+### **Entrada de datos**
+```{r}
+#Comparar los tratamientos de un diseño completamente al azar.
+
+#Datos procedentes de un diseño completamente al azar, en el cual se evaluaron cuatro tratamientos 
+#(dosis de fertilizante) sobre la altura, a los 20 días de una especie vegetal (cm).
+#Fuente: Curso DEA, 2017. COLPOS.
+
+a <- c(10,12,11,12)
+b <- c(15,18,17,18)
+c <- c(25,30,28,27)
+d <- c(28,27,27,29)
+
+
+base3 <- data.frame(cbind(a,b,c,d))
+
+
+my_data3 <- data.frame(
+  fertilizante = rep(c("a", "b","c","d"), each = 4),
+  respuesta = c(a,b,c,d)
+)
+my_data3
+
+
+```
+
+### **Análisis de varianza y comparación de medias**
+```{r}
+library(agricolae)
+
+#ANOVA
+deca <- aov(respuesta~fertilizante, data = my_data3)
+summary(deca)
+
+#Homocedasticidad
+bartlett.test(my_data3$respuesta~my_data3$fertilizante)
+
+#Normalidad del modelo (residuales)
+shapiro.test(deca$residuals)
+hist(deca$residuals)
+
+#Prueba de Tukey para medias
+#d <- agricolae::HSD.test(deca,"fertilizante", group=TRUE,console=TRUE)
+d <- TukeyHSD(deca)
+
+#Para Boxplot con letras
+
+library(ggplot2)
+library(multcompView)
+library(dplyr)
+
+cld <- multcompLetters4(deca, d)
+
+
+# tabla con factores y 3er cuantil
+r <- my_data3 %>% group_by(fertilizante) %>%
+  summarise(mean=mean(respuesta), quant = quantile(respuesta, probs = 0.75)) %>%
+  arrange(desc(mean))
+
+# extraccion de letras añadiendo a la tabla r del paso anterior
+cld <- as.data.frame.list(cld$fertilizante)
+r$cld <- cld$Letters
+
+#Boxplot con letras
+box_p3 <- ggplot(my_data3, aes(fertilizante, respuesta )) + 
+  geom_boxplot(show.legend = F) +
+  labs(x="fertilizante", y="respuesta (alturan en cm)") +
+  theme_bw() + 
+  #theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  theme_gray()+
+  geom_text(data = r, aes(x = fertilizante, y = quant, label = cld), size = 6, vjust=-1, hjust =-1)+
+  stat_summary(fun="mean")
+box_p3
+
+#cajas con diferente color
+library("ggpubr")
+box_p4 <- ggboxplot(my_data3, x = "fertilizante", y = "respuesta", 
+          color = "fertilizante", palette = c("#00AFBB", "#E7B800","#DF0101","#088A08"),
+          ylab = "respuesta (altura en cm)", xlab = "fertilizante")+
+  stat_summary(fun="mean", col=c("#00AFBB", "#E7B800","#DF0101","#088A08"))+
+  geom_text(data = r, aes(x = fertilizante, y = quant, label = cld), size = 6, vjust=-1, hjust =-1)+
+  theme_gray()+rremove("legend")
+box_p4
+```
+
+### **Interpretación de gráficas y resultados**
+
+De acuerdo con los resultados, se observa que el tratamiento con el fertilizante c y d son estadísticamente diferentes a los tratamientos a y b al menos en las condiciones en las que se desarrolló este experimento con un alfa del 0.05 en la variable respuesta altura en cm.
+
